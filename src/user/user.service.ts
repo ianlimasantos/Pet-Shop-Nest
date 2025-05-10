@@ -13,11 +13,11 @@ export class UserService {
         private readonly userRepository: Repository<UserEntity>
     ){}
 
-    async create(userDto: UserDto): Promise<UserDto>{
+    async create(userDto: UserDto){
         const newUser = this.mapDtoToEntity(userDto);
         newUser.passwordHash = hashSync(userDto.passwordHash, 10);
-        const retorno = await this.userRepository.save(newUser);
-        return this.mapEntityToDto(retorno);
+        const {id, username} = await this.userRepository.save(newUser);
+        return {id, username};
     }
 
     async getUser(id: string) : Promise<UserDto>{
@@ -48,6 +48,17 @@ export class UserService {
         if(!user){
             throw new HttpException(`User para ide ${id} não encontrado!`, HttpStatus.NOT_FOUND);
         }
+    }
+
+    async findByUserName(username: string): Promise<UserDto>{
+
+        const user = await this.userRepository.findOne({where: {username}});
+
+        if(!user){
+            throw new HttpException(`Não tem usuário para o username ${username}`, HttpStatus.NOT_FOUND);
+        }
+
+        return this.mapEntityToDto(user);
     }
 
 
