@@ -1,68 +1,64 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { UserDto } from './user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserEntity } from 'src/database/entities/user.entity';
+import { UserEntity } from 'src/user/user.entity';
 import { Repository } from 'typeorm';
 import { hashSync } from 'bcrypt';
+import { Firestore } from 'firebase-admin/firestore';
+import { v4 as uuid } from 'uuid';
+import { CreateUserDto } from './createUser.dto';
+import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UserService {
 
     constructor(
-        @InjectRepository(UserEntity)
-        private readonly userRepository: Repository<UserEntity>
-    ){}
+        private readonly userRepository: UserRepository
+    ) { }
 
-    async create(userDto: UserDto){
-        const newUser = this.mapDtoToEntity(userDto);
-        newUser.passwordHash = hashSync(userDto.passwordHash, 10);
-        const {id, username} = await this.userRepository.save(newUser);
-        return {id, username};
+
+    async create(userDto: UserDto): Promise<UserDto> {
+        return await this.userRepository.create(userDto);
     }
 
-    async getUser(id: string) : Promise<UserDto>{
-        const user = await this.userRepository.findOneBy({id});
-        if(!user){
-            throw new HttpException(`User para id ${id} não foi encontrado`, HttpStatus.NOT_FOUND);
-        }
-
-        return this.mapEntityToDto(user);
+    async getUser(id: string): Promise<UserDto | null> {
+        return await this.userRepository.getUser(id);
 
     }
 
-    async update(id:string, userDto: UserDto){
-        const user = await this.userRepository.findOne({ where : {id}})
+    async getUsers(): Promise<UserDto[]> {
 
-        if(!user){
+        return await this.userRepository.getUsers();
+    }
+
+    async update(id: string, userDto: Partial<UserDto>): Promise<boolean> {
+        const user = await this.userRepository.getUser(id);
+        if (!user) {
             throw new HttpException(`User não encontrado para id ${id}`, HttpStatus.NOT_FOUND);
         }
-        if(userDto.passwordHash){
+        if (userDto?.passwordHash) {
+            console.log("entrou")
             userDto.passwordHash = hashSync(userDto.passwordHash, 10);
         }
-
-        await this.userRepository.update(id, this.mapDtoToEntity(userDto));
+        return await this.userRepository.update(id, userDto);
     }
 
-    async remove(id: string){
-        const user = await this.userRepository.delete(id); 
-        if(!user){
-            throw new HttpException(`User para ide ${id} não encontrado!`, HttpStatus.NOT_FOUND);
+    async remove(id: string): Promise<boolean> {
+        await this.userRepository.deleteUser(id);
+        const user = await this.userRepository.getUser(id);
+        if (!user) {
+            return true;
         }
+        return false;
     }
 
-    async findByUserName(username: string): Promise<UserDto>{
+    async findByUserName(username: string): Promise<UserDto | null> {
 
-        const user = await this.userRepository.findOne({where: {username}});
-
-        if(!user){
-            throw new HttpException(`Não tem usuário para o username ${username}`, HttpStatus.NOT_FOUND);
-        }
-
-        return this.mapEntityToDto(user);
+        return await this.userRepository.getUserByUsername(username);
     }
 
 
-    private mapDtoToEntity(userDto: UserDto): UserEntity{
+    private mapDtoToEntity(userDto: UserDto): UserEntity {
         return {
             id: userDto.id,
             username: userDto.username,
@@ -70,7 +66,7 @@ export class UserService {
         }
     }
 
-    private mapEntityToDto(user: UserEntity): UserDto{
+    private mapEntityToDto(user: FirebaseFirestore.DocumentData): UserDto {
         return {
             id: user.id,
             username: user.username,

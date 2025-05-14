@@ -20,17 +20,17 @@ export class AuthService {
     }
 
     async register(userDto: UserDto): Promise<AuthDto>{
-        const user = await this.userService.findByUserName(userDto.username);
+        // const user = await this.userService.findByUserName(userDto.username);
         
 
-        if(!user || !compareSync(userDto.passwordHash, user.passwordHash)){
-            throw new UnauthorizedException();
-        }
+        // if(!user || !compareSync(userDto.passwordHash, user.passwordHash)){
+        //     throw new UnauthorizedException();
+        // }
 
-        const token = await this.jwtService.signAsync({sub: user.id, username: user.username});
+        // const token = await this.jwtService.signAsync({sub: user.id, username: user.username});
 
         return {
-            token: token,
+            token: 'token',
             expiresIn: this.expiresTime
         }
     }
